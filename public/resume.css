@@ -1,0 +1,260 @@
+/* стили самого резюме (используются и в превью, и в скачанном файле) */
+.cv {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #1c1c1c;
+  --a: #1f6f5c;
+}
+.cv * {
+  box-sizing: border-box;
+}
+.cv h1,
+.cv h2,
+.cv h3,
+.cv p {
+  margin: 0;
+}
+.cv a {
+  color: inherit;
+  text-decoration: none;
+}
+.cv .desc {
+  white-space: pre-line;
+}
+.cv .empty {
+  color: #9aa;
+}
+/* ===== шаблон Классика ===== */
+.cv.classic {
+  font-family: "PT Serif", Georgia, serif;
+  padding: 64px 72px;
+}
+.cv.classic header {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  padding-bottom: 22px;
+  border-bottom: 2px solid var(--a);
+}
+.cv.classic .ph {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: center/cover;
+  flex-shrink: 0;
+}
+.cv.classic h1 {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+.cv.classic .role {
+  font-size: 17px;
+  color: var(--a);
+  margin-top: 6px;
+}
+.cv.classic .contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #444;
+}
+.cv.classic section {
+  margin-top: 24px;
+}
+.cv.classic h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--a);
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ddd;
+}
+.cv.classic .ent {
+  margin-bottom: 14px;
+  break-inside: avoid;
+}
+.cv.classic .ent-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+.cv.classic .ent-top h3 {
+  font-size: 15px;
+}
+.cv.classic .dates {
+  font-size: 12.5px;
+  color: #666;
+  white-space: nowrap;
+}
+.cv.classic .org {
+  font-style: italic;
+  color: #444;
+}
+.cv.classic .desc {
+  margin-top: 4px;
+}
+.cv.classic .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+/* ===== шаблон Модерн ===== */
+.cv.modern {
+  font-family: "Onest", Arial, sans-serif;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 1123px;
+}
+.cv.modern aside {
+  background: var(--a);
+  color: #fff;
+  padding: 48px 28px;
+}
+.cv.modern .ph {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  background: center/cover;
+  margin-bottom: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+}
+.cv.modern aside h2 {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  margin: 26px 0 8px;
+}
+.cv.modern aside p {
+  font-size: 13px;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+.cv.modern .chip {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 3px 9px;
+  margin: 0 5px 6px 0;
+  font-size: 12.5px;
+}
+.cv.modern .lvl {
+  opacity: 0.75;
+}
+.cv.modern .body {
+  padding: 52px 44px;
+}
+.cv.modern h1 {
+  font-size: 36px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.cv.modern .role {
+  font-size: 17px;
+  color: var(--a);
+  margin-top: 8px;
+  font-weight: 500;
+}
+.cv.modern .body section {
+  margin-top: 28px;
+}
+.cv.modern .body h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cv.modern .body h2::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--a);
+  opacity: 0.25;
+}
+.cv.modern .ent {
+  margin-bottom: 16px;
+  break-inside: avoid;
+}
+.cv.modern .ent h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.cv.modern .meta {
+  font-size: 12.5px;
+  color: #666;
+  margin-top: 1px;
+}
+.cv.modern .desc {
+  margin-top: 5px;
+}
+/* ===== шаблон Минимал ===== */
+.cv.minimal {
+  font-family: "IBM Plex Sans", Arial, sans-serif;
+  padding: 70px 80px;
+}
+.cv.minimal h1 {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.cv.minimal .role {
+  font-size: 15px;
+  color: #555;
+  margin-top: 2px;
+}
+.cv.minimal .contacts {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #555;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+.cv.minimal .top {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+.cv.minimal .ph {
+  width: 84px;
+  height: 84px;
+  border-radius: 4px;
+  background: center/cover;
+  flex-shrink: 0;
+}
+.cv.minimal section {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 24px;
+  margin-top: 30px;
+}
+.cv.minimal h2 {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--a);
+  padding-top: 2px;
+}
+.cv.minimal .ent {
+  margin-bottom: 14px;
+  break-inside: avoid;
+}
+.cv.minimal .ent h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.cv.minimal .meta {
+  font-size: 12.5px;
+  color: #666;
+}
+.cv.minimal .desc {
+  margin-top: 4px;
+  color: #333;
+}
