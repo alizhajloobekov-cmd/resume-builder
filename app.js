@@ -808,47 +808,52 @@ tabs.forEach(function (tab) {
 
 // ---------- скачать и печать ----------
 
+// кнопка "Скачать резюме" — сразу отдаём PDF
 document.getElementById('downloadBtn').addEventListener('click', async function () {
-  // берём стили резюме из файла, чтобы вставить их в скачанный html
-  let resumeCss = '';
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Готовлю PDF…';
+
   try {
-    const res = await fetch('resume.css');
-    resumeCss = await res.text();
+    // библиотека для PDF, грузим только когда нажали
+    await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js');
+
+    // рисуем резюме в настоящем размере A4 (в превью оно уменьшено)
+    const box = document.createElement('div');
+    box.style.position = 'fixed';
+    box.style.left = '-10000px';
+    box.style.top = '0';
+    box.style.width = '794px';
+    box.style.background = '#fff';
+    box.innerHTML = buildResumeHtml();
+    document.body.appendChild(box);
+
+    // ждём шрифты
+    await document.fonts.ready;
+
+    const fileName = (data.name || 'resume').trim().replace(/\s+/g, '_') + '_CV.pdf';
+
+    await window.html2pdf()
+      .set({
+        margin: 0,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait', hotfixes: ['px_scaling'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.ent', 'h2'] }
+      })
+      .from(box.firstElementChild)
+      .save();
+
+    box.remove();
+    showToast('PDF скачан');
   } catch (e) {
-    console.log('не нашёл resume.css', e);
+    console.log(e);
+    showToast('Не получилось сделать PDF — попробуйте «Печать / PDF»');
   }
 
-  const fileHtml = `<!DOCTYPE html>
-<html lang="${data.lang}">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(data.name || 'Резюме')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=PT+Serif:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-body { margin: 0; background: #e9ecea; }
-.sheet { width: 794px; min-height: 1123px; margin: 24px auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.12); }
-@page { size: A4; margin: 0; }
-@media print { body { background: #fff; } .sheet { margin: 0; box-shadow: none; } }
-${resumeCss}
-</style>
-</head>
-<body>
-<div class="sheet">${buildResumeHtml()}</div>
-</body>
-</html>`;
-
-  let fileName = (data.name || 'resume').trim().replace(/\s+/g, '_') + '_CV.html';
-
-  const blob = new Blob([fileHtml], { type: 'text/html' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  showToast('Резюме скачано. Откройте файл и сохраните как PDF через печать');
+  btn.disabled = false;
+  btn.textContent = 'Скачать PDF';
 });
 
 document.getElementById('printBtn').addEventListener('click', function () {
