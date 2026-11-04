@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Конструктор резюме</title>
+
+  <!-- шрифты -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=PT+Serif:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="resume.css">
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- верхняя панель -->
+    <header class="bar">
+      <div class="brand">
+        <i></i>
+        Конструктор резюме
+      </div>
+
+      <div class="seg" id="templateButtons"></div>
+      <div class="swatches" id="colorButtons"></div>
+      <div class="seg" id="langButtons"></div>
+
+      <button class="btn ai-btn" id="openWizardBtn">Собрать с ИИ</button>
+      <button class="btn" id="printBtn">Печать / PDF</button>
+      <button class="btn primary" id="downloadBtn">Скачать резюме</button>
+    </header>
+
+    <!-- вкладки для телефона -->
+    <div class="tabs">
+      <button class="tab" data-view="editor" aria-selected="true">Заполнить</button>
+      <button class="tab" data-view="preview" aria-selected="false">Посмотреть</button>
+    </div>
+
+    <main class="main" id="main" data-view="editor">
+      <!-- форма (заполняется из app.js) -->
+      <form class="editor" id="editor" onsubmit="return false"></form>
+
+      <!-- превью листа -->
+      <div class="desk" id="desk">
+        <div class="sheet-wrap" id="sheetWrap">
+          <div class="sheet" id="sheet"></div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+
+  <!-- окно "Собрать с ИИ" -->
+  <div class="wiz" id="wizard" hidden>
+    <div class="wiz-card">
+      <h2>Соберём резюме за пару минут</h2>
+      <p class="lead">
+        Загрузите фото и старое резюме, расскажите о себе своими словами.
+        ИИ составит резюме и подскажет, какую работу искать в вашем городе.
+      </p>
+
+      <label>Фото для резюме</label>
+      <label class="drop">
+        <span class="thumb" id="wizardPhotoThumb"></span>
+        <span>
+          <b id="wizardPhotoName">Выбрать фото</b>
+          <small>JPG или PNG, лучше портрет на светлом фоне</small>
+        </span>
+        <input type="file" id="wizardPhoto" accept="image/*" hidden>
+      </label>
+
+      <label>Старое резюме, если есть</label>
+      <label class="drop">
+        <span class="doc" id="wizardFileExt">CV</span>
+        <span>
+          <b id="wizardFileName">Выбрать файл</b>
+          <small>PDF, Word (.docx), текст или фото страницы</small>
+        </span>
+        <input type="file" id="wizardFile" accept=".pdf,.docx,.txt,.md,image/*" hidden>
+      </label>
+
+      <label for="wizardAbout">Расскажите о себе</label>
+      <textarea id="wizardAbout" rows="5" placeholder="Где работали и сколько лет, что умеете, чем гордитесь, какую работу хотите сейчас. Можно коротко и без официального стиля."></textarea>
+
+      <div class="row">
+        <div>
+          <label for="wizardCity">Город</label>
+          <input type="text" id="wizardCity" placeholder="Бишкек">
+        </div>
+        <div>
+          <label for="wizardLang">Язык резюме</label>
+          <select id="wizardLang">
+            <option value="ru">Русский</option>
+            <option value="ky">Кыргызча</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="progress" id="wizardProgress" hidden><i></i></div>
+
+      <div class="wiz-actions">
+        <span class="status" id="wizardStatus"></span>
+        <button type="button" class="btn ghost" id="wizardSkipBtn">Заполнить вручную</button>
+        <button type="button" class="btn primary" id="wizardGoBtn">Собрать резюме</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
