@@ -255,21 +255,17 @@ function renderJobs() {
 
   let html = '<div class="jobs">';
   html += '<h3>Какую работу искать' + (data.city ? ' — ' + escapeHtml(data.city) : '') + '</h3>';
-  html += '<p class="note">Подборка от ИИ по вашему опыту. Это направления для поиска, а не живые вакансии — ссылки откроют поиск объявлений.</p>';
+  html += '<p class="note">Подборка от ИИ по вашему опыту. Нажмите «Найти вакансии» — откроем поиск на hh.kg, lalafo, LinkedIn и других сайтах.</p>';
 
   for (let i = 0; i < data.jobs.length; i++) {
     const job = data.jobs[i];
-    const search = (job.title + ' вакансии ' + (data.city || '')).trim();
-    const googleLink = 'https://www.google.com/search?q=' + encodeURIComponent(search);
-    const sitesLink = 'https://www.google.com/search?q=' + encodeURIComponent(search + ' site:hh.kg OR site:jobs.kg OR site:lalafo.kg');
 
     html += '<div class="job">';
     html += '<b>' + escapeHtml(job.title) + '</b>';
     html += '<p>' + escapeHtml(job.why);
     if (job.where) html += ' Где искать: ' + escapeHtml(job.where) + '.';
     html += '</p>';
-    html += '<a href="' + googleLink + '" target="_blank">Искать вакансии</a>';
-    html += '<a href="' + sitesLink + '" target="_blank">На сайтах вакансий</a>';
+    html += '<button type="button" class="link-btn" data-find-job="' + escapeHtml(job.title) + '">Найти вакансии</button>';
     html += '</div>';
   }
 
@@ -474,6 +470,11 @@ editor.addEventListener('click', function (e) {
 
   if (btn.dataset.ai) {
     improveText(btn);
+    return;
+  }
+
+  if (btn.dataset.findJob) {
+    openJobs(btn.dataset.findJob);
     return;
   }
 
@@ -1241,7 +1242,9 @@ ${city ? '\nГород: ' + city : ''}`;
     isLoading = false;
     closeWizard();
     editor.scrollTop = 0;
-    showToast('Резюме готово — проверьте данные и поправьте, если нужно');
+
+    // резюме готово — сразу предлагаем найти работу
+    openJobs('', true);
   } catch (err) {
     console.log(err);
     if (err.message === 'много запросов') {
@@ -1254,6 +1257,183 @@ ${city ? '\nГород: ' + city : ''}`;
   isLoading = false;
   wizardGoBtn.disabled = false;
   document.getElementById('wizardProgress').hidden = true;
+});
+
+
+// ---------- окно "Найти работу" ----------
+
+// города КР и их номера (area) на hh.kg
+const cities = [
+  { name: 'Бишкек', hh: '2760', lalafo: 'bishkek' },
+  { name: 'Ош', hh: '2796', lalafo: 'osh' },
+  { name: 'Джалал-Абад', hh: '2795', lalafo: 'kyrgyzstan' },
+  { name: 'Каракол', hh: '2792', lalafo: 'kyrgyzstan' },
+  { name: 'Токмок', hh: '2855', lalafo: 'kyrgyzstan' },
+  { name: 'Кара-Балта', hh: '2845', lalafo: 'kyrgyzstan' },
+  { name: 'Кант', hh: '2844', lalafo: 'kyrgyzstan' },
+  { name: 'Нарын', hh: '2794', lalafo: 'kyrgyzstan' },
+  { name: 'Талас', hh: '2793', lalafo: 'kyrgyzstan' },
+  { name: 'Баткен', hh: '2797', lalafo: 'kyrgyzstan' },
+  { name: 'Балыкчы', hh: '2842', lalafo: 'kyrgyzstan' },
+  { name: 'Чолпон-Ата', hh: '2858', lalafo: 'kyrgyzstan' },
+  { name: 'Узген', hh: '2857', lalafo: 'kyrgyzstan' },
+  { name: 'Кара-Суу', hh: '2847', lalafo: 'kyrgyzstan' },
+  { name: 'Весь Кыргызстан', hh: '48', lalafo: 'kyrgyzstan' },
+  { name: 'Удалённо', hh: '48', lalafo: 'kyrgyzstan', remote: true }
+];
+
+const jobsModal = document.getElementById('jobsModal');
+const jobQuery = document.getElementById('jobQuery');
+const jobCity = document.getElementById('jobCity');
+
+// заполняем список городов
+cities.forEach(function (c, i) {
+  const option = document.createElement('option');
+  option.value = i;
+  option.textContent = c.name;
+  jobCity.appendChild(option);
+});
+
+// подсказки: должности от ИИ + желаемая должность из резюме
+function getJobSuggestions() {
+  const list = [];
+  if (data.title) list.push(data.title);
+  if (data.jobs) {
+    data.jobs.forEach(function (job) {
+      if (job.title && list.indexOf(job.title) === -1) list.push(job.title);
+    });
+  }
+  return list;
+}
+
+// ссылки на поиск на каждом сайте
+function getPlatforms(query, city) {
+  const q = encodeURIComponent(query);
+  const cityName = city.remote ? '' : city.name;
+
+  // hh.kg
+  let hhLink = 'https://hh.kg/search/vacancy?text=' + q + '&area=' + city.hh;
+  if (city.remote) hhLink += '&schedule=remote';
+
+  // lalafo: пробелы заменяются на дефисы — /bishkek/vakansii/q-продавец-консультант
+  let lalafoText = query;
+  if (city.remote) lalafoText += ' удаленно';
+  const lalafoLink = 'https://lalafo.kg/' + city.lalafo + '/vakansii/q-' +
+    encodeURIComponent(lalafoText.trim().toLowerCase().replace(/\s+/g, '-'));
+
+  // LinkedIn
+  let linkedinLocation = 'Kyrgyzstan';
+  if (cityName && cityName !== 'Весь Кыргызстан') linkedinLocation = cityName + ', Kyrgyzstan';
+  let linkedinLink = 'https://www.linkedin.com/jobs/search/?keywords=' + q + '&location=' + encodeURIComponent(linkedinLocation);
+  if (city.remote) linkedinLink += '&f_WT=2';
+
+  // поиск по всем сайтам сразу через Google
+  let googleText = '"' + query + '" вакансия';
+  if (cityName && cityName !== 'Весь Кыргызстан') googleText += ' ' + cityName;
+  if (city.remote) googleText += ' удаленно';
+  googleText += ' site:hh.kg OR site:lalafo.kg OR site:job.kg OR site:headhunter.kg OR site:rabota.kg OR site:bazar.kg OR site:employment.kg OR site:devkg.com';
+  const googleLink = 'https://www.google.com/search?q=' + encodeURIComponent(googleText) + '&tbs=qdr:m';
+
+  return [
+    { name: 'hh.kg', desc: 'Самая большая база вакансий в Кыргызстане', link: hhLink },
+    { name: 'lalafo', desc: 'Объявления о работе, много вакансий без опыта', link: lalafoLink },
+    { name: 'LinkedIn', desc: 'Международные компании и удалённая работа', link: linkedinLink },
+    { name: 'DevKG', tag: 'IT', desc: 'Вакансии для разработчиков, дизайнеров, тестировщиков', link: 'https://devkg.com/ru/rabota' },
+    { name: 'Employment.kg', desc: 'Международные организации, НКО и проекты', link: 'https://employment.kg/vacancies' },
+    { name: 'Find-Ish.gov.kg', tag: 'гос', desc: 'Государственный портал вакансий, бесплатно', link: 'https://find-ish.gov.kg' },
+    { name: 'Все сайты сразу', desc: 'Свежие объявления за месяц с hh.kg, lalafo, job.kg, rabota.kg, bazar.kg и других', link: googleLink, all: true }
+  ];
+}
+
+function renderJobPlatforms() {
+  let query = jobQuery.value.trim();
+  const city = cities[Number(jobCity.value)];
+
+  // подсвечиваем выбранную подсказку
+  document.querySelectorAll('#jobChips .chip-btn').forEach(function (chip) {
+    chip.classList.toggle('active', chip.textContent === query);
+  });
+
+  const box = document.getElementById('jobPlatforms');
+  if (!query) {
+    box.innerHTML = '<p class="note">Введите должность, чтобы получить ссылки на вакансии.</p>';
+    return;
+  }
+
+  const platforms = getPlatforms(query, city);
+  let html = '';
+  platforms.forEach(function (p) {
+    html += '<div class="platform' + (p.all ? ' all' : '') + '">';
+    html += '<div><b>' + p.name + (p.tag ? '<span class="tag">' + p.tag + '</span>' : '') + '</b>';
+    html += '<small>' + p.desc + '</small></div>';
+    html += '<a class="btn small' + (p.all ? ' primary' : '') + '" href="' + p.link + '" target="_blank" rel="noopener">Открыть</a>';
+    html += '</div>';
+  });
+  box.innerHTML = html;
+}
+
+function openJobs(query, afterBuild) {
+  // заголовок
+  if (afterBuild) {
+    document.getElementById('jobsTitle').textContent = 'Резюме готово! Теперь найдём работу';
+    document.getElementById('jobsLead').textContent = 'Проверьте резюме и скачайте PDF. Ниже — поиск вакансий по вашему профилю на сайтах Кыргызстана.';
+  } else {
+    document.getElementById('jobsTitle').textContent = 'Найти работу в Кыргызстане';
+    document.getElementById('jobsLead').textContent = 'Выберите должность и город — откроем поиск вакансий сразу на нескольких сайтах.';
+  }
+
+  // подсказки
+  const suggestions = getJobSuggestions();
+  let chipsHtml = '';
+  suggestions.forEach(function (s) {
+    chipsHtml += '<button type="button" class="chip-btn">' + escapeHtml(s) + '</button>';
+  });
+  document.getElementById('jobChips').innerHTML = chipsHtml;
+
+  // должность
+  jobQuery.value = query || jobQuery.value || suggestions[0] || '';
+
+  // город из резюме
+  let cityIndex = 0;
+  for (let i = 0; i < cities.length; i++) {
+    if (data.city && data.city.toLowerCase().indexOf(cities[i].name.toLowerCase()) !== -1) {
+      cityIndex = i;
+    }
+  }
+  jobCity.value = cityIndex;
+
+  renderJobPlatforms();
+  jobsModal.hidden = false;
+}
+
+function closeJobs() {
+  jobsModal.hidden = true;
+}
+
+document.getElementById('openJobsBtn').addEventListener('click', function () {
+  openJobs('');
+});
+document.getElementById('jobsCloseBtn').addEventListener('click', closeJobs);
+document.getElementById('jobsPdfBtn').addEventListener('click', function () {
+  document.getElementById('downloadBtn').click();
+});
+
+jobQuery.addEventListener('input', renderJobPlatforms);
+jobCity.addEventListener('change', renderJobPlatforms);
+
+document.getElementById('jobChips').addEventListener('click', function (e) {
+  if (e.target.classList.contains('chip-btn')) {
+    jobQuery.value = e.target.textContent;
+    renderJobPlatforms();
+  }
+});
+
+jobsModal.addEventListener('click', function (e) {
+  if (e.target === jobsModal) closeJobs();
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && !jobsModal.hidden) closeJobs();
 });
 
 

@@ -29,6 +29,7 @@
       <div class="seg" id="langButtons"></div>
 
       <button class="btn ai-btn" id="openWizardBtn">Собрать с ИИ</button>
+      <button class="btn" id="openJobsBtn">Найти работу</button>
       <button class="btn" id="printBtn">Печать / PDF</button>
       <button class="btn primary" id="downloadBtn">Скачать PDF</button>
     </header>
@@ -107,6 +108,34 @@
         <span class="status" id="wizardStatus"></span>
         <button type="button" class="btn ghost" id="wizardSkipBtn">Заполнить вручную</button>
         <button type="button" class="btn primary" id="wizardGoBtn">Собрать резюме</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- окно "Найти работу" -->
+  <div class="wiz" id="jobsModal" hidden>
+    <div class="wiz-card">
+      <h2 id="jobsTitle">Найти работу в Кыргызстане</h2>
+      <p class="lead" id="jobsLead">
+        Выберите должность и город — откроем поиск вакансий сразу на нескольких сайтах.
+      </p>
+
+      <label for="jobQuery">Должность или ключевое слово</label>
+      <input type="text" id="jobQuery" placeholder="Например: маркетолог">
+      <div class="chips" id="jobChips"></div>
+
+      <label for="jobCity">Город</label>
+      <select id="jobCity"></select>
+
+      <div class="apply-tip">
+        <span>Для откликов понадобится резюме в PDF</span>
+        <button type="button" class="btn small" id="jobsPdfBtn">Скачать PDF</button>
+      </div>
+
+      <div id="jobPlatforms"></div>
+
+      <div class="wiz-actions">
+        <button type="button" class="btn primary" id="jobsCloseBtn">Готово</button>
       </div>
     </div>
   </div>
