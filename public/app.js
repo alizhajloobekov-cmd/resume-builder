@@ -883,6 +883,14 @@ document.getElementById('printBtn').addEventListener('click', function () {
 // 1) сайт открыт внутри Claude (claude.ai) — ИИ работает через аккаунт Claude, ключ не нужен
 // 2) сайт запущен с нашим сервером (npm start) — запросы идут на /api/ai, ключ в .env
 
+// адрес сервера с ИИ
+// на GitHub Pages сервера нет — ходим на сервер на Render
+// при запуске через npm start сервер тот же, что и сайт
+let API_URL = '';
+if (location.hostname === 'alizhajloobekov-cmd.github.io') {
+  API_URL = 'https://resume-builder-kg.onrender.com/';
+}
+
 let aiEnabled = false;
 let aiChecked = false;
 let claudeAi = null;        // ИИ через claude.ai
@@ -904,7 +912,7 @@ async function checkAi() {
   } else {
     // способ 2: наш сервер
     try {
-      const res = await fetch('api/health');
+      const res = await fetch(API_URL + 'api/health');
       const json = await res.json();
       aiEnabled = json.ai === true;
     } catch (e) {
@@ -961,7 +969,7 @@ async function askAi(prompt, images) {
     }
   }
 
-  const res = await fetch('api/ai', {
+  const res = await fetch(API_URL + 'api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: prompt, images: imagesBase64 })
@@ -1054,7 +1062,8 @@ function openWizard() {
     wizardGoBtn.disabled = false;
   } else {
     if (!aiChecked) {
-      setStatus('Подключаю ИИ…');
+      // бесплатный сервер засыпает, первый запуск может занять до минуты
+      setStatus('Подключаю ИИ… первый раз может занять до минуты');
     } else {
       setStatus('На этой версии сайта ИИ пока недоступен — заполните резюме вручную', true);
     }

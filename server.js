@@ -24,7 +24,49 @@ if (fs.existsSync('.env')) {
 
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+
+// с каких сайтов можно обращаться к /api (через запятую)
+// например, сайт на GitHub Pages ходит к серверу на Render
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || 'https://alizhajloobekov-cmd.github.io').split(',').map(function (s) {
+  return s.trim();
+});
+
+// сколько запросов к ИИ можно сделать с одного IP за час
+const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_HOUR || 30);
+const requestsByIp = {};
+
+function isTooMany(ip) {
+  const now = Date.now();
+  let info = requestsByIp[ip];
+
+  // новый час — начинаем считать заново
+  if (!info || now - info.start > 60 * 60 * 1000) {
+    info = { start: now, count: 0 };
+    requestsByIp[ip] = info;
+  }
+
+  info.count++;
+  return info.count > RATE_LIMIT;
+}
+
+function getIp(req) {
+  // на хостинге настоящий IP приходит в заголовке x-forwarded-for
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.socket.remoteAddress;
+}
+
+// разрешаем запросы с нашего сайта на GitHub Pages
+function addCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Vary', 'Origin');
+  }
+}
 
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -74,7 +116,7 @@ async function askClaude(prompt, images) {
     });
   }
 
-  content.push({ type: 'text', text: prompt });
+  content.push({ type: 'text', text: String(prompt).slice(0, 60000) });
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -109,16 +151,38 @@ async function askClaude(prompt, images) {
 
 const server = http.createServer(async function (req, res) {
   try {
+    const url = req.url.split('?')[0];
+
+    if (url.startsWith('/api/')) {
+      addCors(req, res);
+      // браузер сначала спрашивает разрешение (preflight)
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+    }
+
     // есть ли ключ
-    if (req.url === '/api/health') {
+    if (url === '/api/health') {
       sendJson(res, 200, { ai: API_KEY !== '' });
       return;
     }
 
     // запрос к ИИ
-    if (req.url === '/api/ai' && req.method === 'POST') {
+    if (url === '/api/ai' && req.method === 'POST') {
       if (!API_KEY) {
         sendJson(res, 503, { error: 'нет ключа ANTHROPIC_API_KEY в .env' });
+        return;
+      }
+      // защита от того, чтобы ключ не потратили чужие
+      const origin = req.headers.origin;
+      if (origin && ALLOWED_ORIGINS.indexOf(origin) === -1 && origin !== 'http://' + req.headers.host && origin !== 'https://' + req.headers.host) {
+        sendJson(res, 403, { error: 'запросы с этого сайта запрещены' });
+        return;
+      }
+      if (isTooMany(getIp(req))) {
+        sendJson(res, 429, { error: 'слишком много запросов, попробуйте через час' });
         return;
       }
       const body = JSON.parse(await readBody(req));
@@ -132,10 +196,10 @@ const server = http.createServer(async function (req, res) {
     }
 
     // обычные файлы из public
-    let url = req.url.split('?')[0];
-    if (url === '/') url = '/index.html';
+    let fileUrl = url;
+    if (fileUrl === '/') fileUrl = '/index.html';
 
-    const filePath = path.join(__dirname, 'public', path.normalize(url));
+    const filePath = path.join(__dirname, 'public', path.normalize(fileUrl));
 
     // чтобы нельзя было выйти из папки public
     if (!filePath.startsWith(path.join(__dirname, 'public'))) {

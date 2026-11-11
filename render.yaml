@@ -1,0 +1,19 @@
+# Настройки для хостинга Render (render.com)
+# Ключ ANTHROPIC_API_KEY вводится в Render при создании сервиса, в код он не попадает
+services:
+  - type: web
+    name: resume-builder-kg
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5
+      - key: ALLOWED_ORIGIN
+        value: https://alizhajloobekov-cmd.github.io
+      - key: RATE_LIMIT_PER_HOUR
+        value: "30"
