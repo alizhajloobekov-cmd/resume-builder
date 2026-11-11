@@ -24,6 +24,7 @@ if (fs.existsSync('.env')) {
 
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const WORKSPACE_ID = process.env.ANTHROPIC_WORKSPACE_ID || '';
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
 // с каких сайтов можно обращаться к /api (через запятую)
@@ -118,13 +119,18 @@ async function askClaude(prompt, images) {
 
   content.push({ type: 'text', text: String(prompt).slice(0, 60000) });
 
+  const headers = {
+    'content-type': 'application/json',
+    'authorization': 'Bearer ' + API_KEY,
+    'anthropic-version': '2023-06-01'
+  };
+
+  // если ключ создан без workspace, нужно указать его id (ANTHROPIC_WORKSPACE_ID)
+  if (WORKSPACE_ID) headers['anthropic-workspace-id'] = WORKSPACE_ID;
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
+    headers: headers,
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 4000,
