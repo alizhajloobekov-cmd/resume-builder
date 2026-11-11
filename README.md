@@ -51,7 +51,10 @@
 ## Хостинг сервера на Render
 
 1. Открыть https://render.com/deploy?repo=https://github.com/alizhajloobekov-cmd/resume-builder
-2. Войти в Render и вставить свой `ANTHROPIC_API_KEY` (console.anthropic.com).
+2. Войти в Render и вставить ключ ИИ:
+   - бесплатно — `GROQ_API_KEY` с https://console.groq.com/keys
+   - или Claude (платно, качественнее) — `ANTHROPIC_API_KEY` с https://platform.claude.com/settings/keys
+   Если есть оба ключа, используется Claude; выбрать вручную можно переменной `AI_PROVIDER` (`groq` или `anthropic`).
 3. Нажать Apply — Render возьмёт настройки из `render.yaml`.
 
 Защита ключа: сервер принимает запросы только с сайта на GitHub Pages и не больше 30 запросов к ИИ с одного IP в час (меняется в `RATE_LIMIT_PER_HOUR`). Бесплатный сервер засыпает после 15 минут без запросов, первый запуск после этого занимает до минуты.

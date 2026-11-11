@@ -1,5 +1,5 @@
 # Настройки для хостинга Render (render.com)
-# Ключ ANTHROPIC_API_KEY вводится в Render при создании сервиса, в код он не попадает
+# Ключи ИИ вводятся в Render (Environment), в код они не попадают
 services:
   - type: web
     name: resume-builder-kg
@@ -9,6 +9,10 @@ services:
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:
+      # бесплатный ИИ (console.groq.com) — достаточно одного из двух ключей
+      - key: GROQ_API_KEY
+        sync: false
+      # Claude, платный (platform.claude.com/settings/keys)
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL

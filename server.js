@@ -23,9 +23,24 @@ if (fs.existsSync('.env')) {
 }
 
 const PORT = process.env.PORT || 3000;
+// ---- какой ИИ используем ----
+// groq — бесплатный (ключ на console.groq.com)
+// anthropic — Claude, платный, но качественнее (ключ на platform.claude.com)
+const GROQ_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+const GROQ_VISION_MODEL = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b'; // умеет читать картинки
+
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const WORKSPACE_ID = process.env.ANTHROPIC_WORKSPACE_ID || '';
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+
+// AI_PROVIDER можно задать вручную, иначе берём тот, для которого есть ключ
+let PROVIDER = process.env.AI_PROVIDER || '';
+if (!PROVIDER) {
+  if (API_KEY) PROVIDER = 'anthropic';
+  else if (GROQ_KEY) PROVIDER = 'groq';
+}
+const AI_READY = (PROVIDER === 'groq' && GROQ_KEY !== '') || (PROVIDER === 'anthropic' && API_KEY !== '');
 
 // с каких сайтов можно обращаться к /api (через запятую)
 // например, сайт на GitHub Pages ходит к серверу на Render
@@ -155,6 +170,57 @@ async function askClaude(prompt, images) {
   return text;
 }
 
+// запрос к Groq (формат как у OpenAI)
+async function askGroq(prompt, images) {
+  const hasImages = images && images.length > 0;
+  let content = String(prompt).slice(0, 60000);
+
+  // если есть картинки — отправляем их вместе с текстом в модель, которая умеет их читать
+  if (hasImages) {
+    content = [{ type: 'text', text: content }];
+    images.slice(0, 3).forEach(function (img) {
+      content.push({
+        type: 'image_url',
+        image_url: { url: 'data:' + img.media_type + ';base64,' + img.data }
+      });
+    });
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': 'Bearer ' + GROQ_KEY
+    },
+    body: JSON.stringify({
+      model: hasImages ? GROQ_VISION_MODEL : GROQ_MODEL,
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: content }]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.log('Ошибка Groq API:', response.status, errorText);
+    const err = new Error('ошибка API');
+    err.status = response.status === 429 ? 429 : 502;
+    throw err;
+  }
+
+  const data = await response.json();
+  let text = data.choices[0].message.content || '';
+
+  // некоторые модели пишут свои "размышления" в <think>...</think> — убираем их
+  text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  return text;
+}
+
+// выбираем, куда отправить запрос
+function askAi(prompt, images) {
+  if (PROVIDER === 'groq') return askGroq(prompt, images);
+  return askClaude(prompt, images);
+}
+
 const server = http.createServer(async function (req, res) {
   try {
     const url = req.url.split('?')[0];
@@ -171,14 +237,14 @@ const server = http.createServer(async function (req, res) {
 
     // есть ли ключ
     if (url === '/api/health') {
-      sendJson(res, 200, { ai: API_KEY !== '' });
+      sendJson(res, 200, { ai: AI_READY, provider: AI_READY ? PROVIDER : null });
       return;
     }
 
     // запрос к ИИ
     if (url === '/api/ai' && req.method === 'POST') {
-      if (!API_KEY) {
-        sendJson(res, 503, { error: 'нет ключа ANTHROPIC_API_KEY в .env' });
+      if (!AI_READY) {
+        sendJson(res, 503, { error: 'нет ключа ИИ: добавьте GROQ_API_KEY или ANTHROPIC_API_KEY' });
         return;
       }
       // защита от того, чтобы ключ не потратили чужие
@@ -196,7 +262,7 @@ const server = http.createServer(async function (req, res) {
         sendJson(res, 400, { error: 'пустой запрос' });
         return;
       }
-      const text = await askClaude(body.prompt, body.images);
+      const text = await askAi(body.prompt, body.images);
       sendJson(res, 200, { text: text });
       return;
     }
@@ -232,7 +298,9 @@ const server = http.createServer(async function (req, res) {
 
 server.listen(PORT, function () {
   console.log('Сайт запущен: http://localhost:' + PORT);
-  if (!API_KEY) {
-    console.log('ИИ выключен — добавь ANTHROPIC_API_KEY в файл .env');
+  if (AI_READY) {
+    console.log('ИИ: ' + PROVIDER);
+  } else {
+    console.log('ИИ выключен — добавь GROQ_API_KEY (бесплатно) или ANTHROPIC_API_KEY в файл .env');
   }
 });
