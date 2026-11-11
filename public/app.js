@@ -844,13 +844,29 @@ document.getElementById('downloadBtn').addEventListener('click', async function 
         pagebreak: { mode: ['css', 'legacy'], avoid: ['.ent', 'h2'] }
       })
       .from(box.firstElementChild)
-      .save();
+      .outputPdf('blob')
+      .then(async function (pdfBlob) {
+        if (claudeDownloads) {
+          // внутри claude.ai файл сохраняется через окно подтверждения
+          await claudeDownloads.save({ filename: fileName, data: pdfBlob });
+        } else {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(pdfBlob);
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }
+      });
 
     box.remove();
     showToast('PDF скачан');
   } catch (e) {
     console.log(e);
-    showToast('Не получилось сделать PDF — попробуйте «Печать / PDF»');
+    // если человек сам отменил сохранение — ничего не пишем
+    if (!(e && e.code === 'declined')) {
+      showToast('Не получилось сделать PDF — попробуйте «Печать / PDF»');
+    }
   }
 
   btn.disabled = false;
@@ -862,19 +878,41 @@ document.getElementById('printBtn').addEventListener('click', function () {
 });
 
 
-// ---------- работа с ИИ (через наш сервер /api/ai) ----------
+// ---------- работа с ИИ ----------
+// два способа:
+// 1) сайт открыт внутри Claude (claude.ai) — ИИ работает через аккаунт Claude, ключ не нужен
+// 2) сайт запущен с нашим сервером (npm start) — запросы идут на /api/ai, ключ в .env
 
 let aiEnabled = false;
+let aiChecked = false;
+let claudeAi = null;        // ИИ через claude.ai
+let claudeDownloads = null; // скачивание файлов внутри claude.ai
 
-// проверяем, есть ли ключ на сервере
 async function checkAi() {
-  try {
-    const res = await fetch('/api/health');
-    const json = await res.json();
-    aiEnabled = json.ai === true;
-  } catch (e) {
-    aiEnabled = false;
+  // способ 1: внутри claude.ai
+  if (window.claude && window.claude.use) {
+    try {
+      claudeAi = await window.claude.use('sample');
+      claudeDownloads = await window.claude.use('downloads');
+    } catch (e) {
+      console.log('claude.ai недоступен', e);
+    }
   }
+
+  if (claudeAi) {
+    aiEnabled = true;
+  } else {
+    // способ 2: наш сервер
+    try {
+      const res = await fetch('api/health');
+      const json = await res.json();
+      aiEnabled = json.ai === true;
+    } catch (e) {
+      aiEnabled = false;
+    }
+  }
+
+  aiChecked = true;
   renderForm();
   if (!wizard.hidden) openWizard();
 }
@@ -896,6 +934,26 @@ function fileToBase64(file) {
 }
 
 async function askAi(prompt, images) {
+  // через claude.ai
+  if (claudeAi) {
+    const options = {};
+    if (images && images.length) options.images = images;
+    try {
+      const result = await claudeAi(prompt, options);
+      return result.text;
+    } catch (e) {
+      if (e && e.code === 'rate_limited') throw new Error('много запросов');
+      if (e && e.code === 'not_granted') {
+        // человек не разрешил ИИ
+        claudeAi = null;
+        aiEnabled = false;
+        renderForm();
+      }
+      throw new Error('ошибка ИИ ' + (e && e.code));
+    }
+  }
+
+  // через наш сервер
   let imagesBase64 = [];
   if (images && images.length) {
     for (let i = 0; i < images.length; i++) {
@@ -903,7 +961,7 @@ async function askAi(prompt, images) {
     }
   }
 
-  const res = await fetch('/api/ai', {
+  const res = await fetch('api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: prompt, images: imagesBase64 })
@@ -995,7 +1053,11 @@ function openWizard() {
     setStatus('');
     wizardGoBtn.disabled = false;
   } else {
-    setStatus('ИИ не подключён (нет ключа в .env) — можно заполнить вручную', true);
+    if (!aiChecked) {
+      setStatus('Подключаю ИИ…');
+    } else {
+      setStatus('На этой версии сайта ИИ пока недоступен — заполните резюме вручную', true);
+    }
     wizardGoBtn.disabled = true;
   }
 }
